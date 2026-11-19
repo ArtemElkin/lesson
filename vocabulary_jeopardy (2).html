@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vocabulary Jeopardy</title>
+<style>
+:root{--navy:#101b59;--blue:#182b91;--blue2:#243db5;--gold:#ffdf45;--white:#fff}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(circle at top,#263fa8 0,#101b59 70%);color:var(--white);font-family:Arial,Helvetica,sans-serif}
+header{text-align:center;padding:18px 12px 8px}
+h1{margin:0;font-size:clamp(25px,4vw,42px);letter-spacing:2px;text-transform:uppercase;text-shadow:0 3px 0 #080e35}
+.subtitle{margin:6px 0 0;color:#d9e0ff;font-size:14px}
+.board-wrap{width:min(1500px,98vw);margin:12px auto 120px;padding:8px}
+.board{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.category{background:#09113f;border:2px solid #050a2b;display:flex;align-items:center;justify-content:center;text-align:center;min-height:78px;padding:8px 5px;font-weight:800;font-size:clamp(12px,1.4vw,20px);text-transform:uppercase;line-height:1.15;color:#fff}
+.tile{border:2px solid #080f3d;background:linear-gradient(145deg,var(--blue2),var(--blue));min-height:clamp(58px,8.2vh,88px);display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:clamp(22px,3vw,36px);font-weight:900;cursor:pointer;transition:transform .12s,filter .12s}
+.tile:hover:not(.used){filter:brightness(1.25);transform:scale(1.025)}
+.tile.used{color:#6572b5;background:#111a54;cursor:pointer;text-decoration:line-through;opacity:.55}.tile.used:hover{filter:brightness(1.35);transform:scale(1.025)}
+#scorebar{position:fixed;bottom:0;left:0;right:0;display:flex;gap:12px;justify-content:center;align-items:center;padding:12px 16px;background:rgba(5,10,42,.96);border-top:2px solid #6576d6;z-index:5}
+.score-label{font-size:clamp(16px,2vw,21px);font-weight:800;color:#fff}
+#scoreValue{color:var(--gold);font-size:clamp(23px,3vw,30px);font-weight:900;font-variant-numeric:tabular-nums}
+#resetScore{border:1px solid #9eacee;border-radius:5px;background:#e2e7ff;color:#101b59;padding:7px 11px;font-weight:800;cursor:pointer}
+.result-actions{display:none;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.result-actions.show{display:flex}
+.result-actions button{border:0;border-radius:6px;padding:12px 18px;font-size:16px;font-weight:800;cursor:pointer}
+.correct{background:#c9f2d1;color:#145b27}.incorrect{background:#ffd0d0;color:#8a1111}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+.modal-backdrop.open{display:flex}
+.modal{width:min(900px,96vw);max-height:92vh;overflow:auto;background:linear-gradient(150deg,#182b91,#0b144d);border:4px solid var(--gold);box-shadow:0 18px 60px #0009;padding:clamp(18px,4vw,38px);text-align:center;position:relative}
+.modal-top{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--gold);font-weight:800;font-size:18px}
+.close{border:0;background:transparent;color:#fff;font-size:30px;cursor:pointer}
+.question{font-size:clamp(22px,3.4vw,34px);font-weight:700;line-height:1.35;margin:18px auto;max-width:780px}
+.options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:720px;margin:20px auto}
+.option{padding:12px 14px;border:1px solid #8291e6;border-radius:6px;background:#ffffff12;font-size:clamp(16px,2vw,21px);text-align:left}
+.reveal{display:none;margin:20px auto 0;padding:14px;border-radius:6px;background:#fff;color:#101b59;font-size:clamp(19px,2.4vw,25px);font-weight:900;max-width:700px}
+.reveal.show{display:block}
+.actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:22px}
+.actions button{border:0;border-radius:6px;padding:12px 18px;font-size:16px;font-weight:800;cursor:pointer}
+.primary{background:var(--gold);color:#101b59}.secondary{background:#e2e7ff;color:#101b59}
+.instructions{text-align:center;color:#d8defe;font-size:13px;margin:12px 0 0}
+@media(max-width:760px){.board-wrap{width:100%;padding:4px}.board{gap:3px}.category{min-height:68px;padding:5px 2px;font-size:10px}.tile{min-height:54px;font-size:19px}#scorebar{gap:8px;padding:9px 10px}.options{grid-template-columns:1fr}.modal{padding:18px 12px}}
+@media(max-height:650px){.category{min-height:55px}.tile{min-height:46px}.board-wrap{margin-top:4px;margin-bottom:95px}header{padding:8px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Vocabulary Jeopardy</h1>
+  <p class="subtitle">Choose a category and a point value. The harder the question, the more points you can win!</p>
+</header>
+<main class="board-wrap"><div class="board" id="board"></div><p class="instructions">Choose a question, reveal the answer, then mark it correct or incorrect. Your score is shown below.</p></main>
+<section id="scorebar" aria-label="Individual score">
+  <span class="score-label">Your score:</span>
+  <span id="scoreValue">0</span>
+  <span class="score-label">/ 27,500 points</span>
+  <button id="resetScore" onclick="resetScore()">Reset</button>
+</section>
+<div class="modal-backdrop" id="backdrop" role="dialog" aria-modal="true" aria-labelledby="questionText">
+  <div class="modal">
+    <div class="modal-top"><span id="categoryLabel"></span><span id="pointsLabel"></span><button class="close" onclick="closeModal()" aria-label="Close">×</button></div>
+    <div class="question" id="questionText"></div>
+    <div class="options" id="options"></div>
+    <div class="reveal" id="answer"></div>
+    <div class="actions">
+      <button class="primary" id="revealButton" onclick="revealAnswer()">Reveal answer</button>
+      <button class="secondary" id="backButton" onclick="closeModal()">Back to board</button>
+    </div>
+    <div class="result-actions" id="resultActions">
+      <button class="correct" onclick="finishQuestion(true)">I got it right</button>
+      <button class="incorrect" onclick="finishQuestion(false)">I got it wrong</button>
+    </div>
+  </div>
+</div>
+<script>
+const gameData = {"People & Work": [{"points": 100, "question": "Noah can be quite ___. He carried the shopping bag for me this morning.", "options": ["bossy", "helpful", "noisy", "tidy"], "answer": "B. helpful"}, {"points": 200, "question": "You look so ___. Why don’t you go to bed?", "options": ["angry", "calm", "silly", "sleepy"], "answer": "D. sleepy"}, {"points": 300, "question": "She works as a ___ in a well-known Italian restaurant.", "options": ["chef", "firefighter", "shop assistant", "teacher"], "answer": "A. chef"}, {"points": 400, "question": "Bertha is always so ___. She needs to relax a bit.", "options": ["funny", "easy-going", "reliable", "serious"], "answer": "D. serious"}, {"points": 500, "question": "I felt very ___ when I finished the marathon. It was the happiest day of my life.", "options": ["jealous", "nervous", "proud", "terrified"], "answer": "C. proud"}, {"points": 600, "question": "I’m saving some of my ___ to buy a motorbike.", "options": ["career", "profession", "qualifications", "wages"], "answer": "D. wages"}, {"points": 700, "question": "It’s really ___ when people throw paper on the floor.", "options": ["annoyed", "annoying", "amazed", "amazing"], "answer": "B. annoying"}, {"points": 800, "question": "Why are you so ___? It doesn’t matter who wins.", "options": ["competitive", "failure", "success", "talented"], "answer": "A. competitive"}, {"points": 900, "question": "I’ve made up ___ and I’m going to leave my job.", "options": ["my decision", "my mind", "sense", "the right choice"], "answer": "B. my mind"}, {"points": 1000, "question": "People say I ___ my father because we both worry a lot!", "options": ["take up", "take out", "take after", "take away"], "answer": "C. take after"}], "Arts & Entertainment": [{"points": 100, "question": "I don’t want to be late for the ___ because I don’t want to miss any of the songs.", "options": ["art gallery", "show", "studio", "venue"], "answer": "B. show"}, {"points": 200, "question": "That wasn’t a very good ___. It was the worst acting I’ve ever seen.", "options": ["character", "ending", "performance", "storyteller"], "answer": "C. performance"}, {"points": 300, "question": "I laughed from the beginning to the end of this ___ about a couple who meet on a train.", "options": ["action film", "biopic", "mystery", "romantic comedy"], "answer": "D. romantic comedy"}, {"points": 400, "question": "It was an old ___ so it was difficult to hear the music clearly.", "options": ["arts", "image", "recording", "works"], "answer": "C. recording"}, {"points": 500, "question": "I’ve tried different ___ of dance, but my favourite is ballet.", "options": ["images", "styles", "subjects", "works"], "answer": "B. styles"}, {"points": 600, "question": "Philip Glass is one of my favourite ___. He’s written music for operas and films.", "options": ["composers", "dancers", "painters", "performers"], "answer": "A. composers"}, {"points": 700, "question": "The ___ in our town is like a party which lasts for three days.", "options": ["attraction", "festival", "queue", "tradition"], "answer": "B. festival"}, {"points": 800, "question": "A ___ from the local newspaper came to take our pictures.", "options": ["photograph", "photographic", "photographer", "photography"], "answer": "C. photographer"}, {"points": 900, "question": "She’s decided to ___ a sculpture from recycled plastic.", "options": ["create", "creative", "creation", "creator"], "answer": "A. create"}, {"points": 1000, "question": "She didn’t write a very ___ story.", "options": ["imagine", "imagined", "imagination", "imaginative"], "answer": "D. imaginative"}], "Learning & Communication": [{"points": 100, "question": "I forgot to ___ his phone number in my address book.", "options": ["guess", "note down", "revise", "solve"], "answer": "B. note down"}, {"points": 200, "question": "You don’t need to get the best ___ in the test. You just need to pass.", "options": ["data", "multiple-choice", "option", "score"], "answer": "D. score"}, {"points": 300, "question": "He’s got an amazing ___. He never forgets anyone’s name.", "options": ["information", "knowledge", "memory", "solution"], "answer": "C. memory"}, {"points": 400, "question": "You can’t just read the ___. You need to read the whole article or blog post.", "options": ["content", "headline", "journalist", "publish"], "answer": "B. headline"}, {"points": 500, "question": "I need to ___ to Ryan because I’m going to be late.", "options": ["download an app", "receive a text", "send a message", "share a video"], "answer": "C. send a message"}, {"points": 600, "question": "You can ___ our video, by clicking on the button below.", "options": ["comment", "like", "make", "podcast"], "answer": "B. like"}, {"points": 700, "question": "Be careful about the comments you ___. It’s easy to upset people if you say the wrong thing.", "options": ["blog post", "fake news", "find out", "post online"], "answer": "D. post online"}, {"points": 800, "question": "She can never ___ her work. She’s always thinking about something else.", "options": ["choose", "decide", "focus on", "select"], "answer": "C. focus on"}, {"points": 900, "question": "He can’t ___ playing because he’s too tired. He needs to stop.", "options": ["carry on", "do well", "give up", "working hard"], "answer": "A. carry on"}, {"points": 1000, "question": "The latest smartphones let you ___ fantastic pictures.", "options": ["go", "launch", "make", "take"], "answer": "D. take"}], "Environment & Society": [{"points": 100, "question": "I used to throw a lot of things away, but now I ___ them so they can be used again.", "options": ["recycle", "rubbish", "smoke", "waste"], "answer": "A. recycle"}, {"points": 200, "question": "People need to use their cars because ___ isn’t very good.", "options": ["climate change", "environment", "natural resources", "public transport"], "answer": "D. public transport"}, {"points": 300, "question": "We’re hoping to ___ money for charity by cleaning people’s cars.", "options": ["donate", "raise", "recycle", "waste"], "answer": "B. raise"}, {"points": 400, "question": "The police have arrested a number of ___ after they stopped a train carrying dangerous waste.", "options": ["activists", "campaigns", "charities", "levels"], "answer": "A. activists"}, {"points": 500, "question": "Governments have agreed to cut down fewer trees in the world’s ___.", "options": ["factory smoke", "natural disasters", "rainforests", "traffic jams"], "answer": "C. rainforests"}, {"points": 600, "question": "Historians are excited about the ___ of a Roman villa in a supermarket car park.", "options": ["discover", "discovery", "introduce", "introduction"], "answer": "B. discovery"}, {"points": 700, "question": "Before we buy the wood, we need to ___ how much we need to make the desk.", "options": ["arrange", "calculate", "design", "replace"], "answer": "B. calculate"}, {"points": 800, "question": "I can’t ___ this new oven myself. I need someone to help me.", "options": ["install", "solve", "turn into", "upload"], "answer": "A. install"}, {"points": 900, "question": "Jane has ___ a brilliant idea for saving space in the kitchen.", "options": ["come up with", "got on with", "looked after", "put up"], "answer": "A. come up with"}, {"points": 1000, "question": "Now you’ve got more free time you should ___ a new hobby.", "options": ["get up", "make up", "set up", "take up"], "answer": "D. take up"}], "Travel & Technology": [{"points": 100, "question": "There are some pretty fishing villages along the ___.", "options": ["coast", "countryside", "jungle", "mountain range"], "answer": "A. coast"}, {"points": 200, "question": "There’s a beautiful lake where you can swim at the bottom of the ___.", "options": ["rainforest", "stream", "valley", "seaside"], "answer": "C. valley"}, {"points": 300, "question": "We ___ the city to be a lot bigger than it was.", "options": ["accepted", "expected", "noticed", "surprised"], "answer": "B. expected"}, {"points": 400, "question": "We met a ___ in our hotel who was travelling around Europe.", "options": ["accommodation", "backpacker", "monument", "nightlife"], "answer": "B. backpacker"}, {"points": 500, "question": "We left our ___ in the hotel reception while we went out for the day.", "options": ["check-in", "city break", "exchange rate", "luggage"], "answer": "D. luggage"}, {"points": 600, "question": "It’s cheaper if you go ___, but the weather won’t be good.", "options": ["destination", "culture", "out of season", "sightseeing"], "answer": "C. out of season"}, {"points": 700, "question": "I’d ___ the Alhambra until I read about it in a magazine. I’d love to go there one day.", "options": ["come across", "explored", "never heard of", "realised"], "answer": "C. never heard of"}, {"points": 800, "question": "I can’t ___ my tablet because I haven’t got the right cable.", "options": ["charge", "pay", "press", "undo"], "answer": "A. charge"}, {"points": 900, "question": "Why did you ___ the radio? I was listening to it.", "options": ["press", "shut down", "switch off", "turn on"], "answer": "C. switch off"}, {"points": 1000, "question": "The battery on my phone ___ quickly these days. I need to get a new one.", "options": ["gives over", "runs out", "plugs in", "turns on"], "answer": "B. runs out"}]};
+const board = document.getElementById('board');
+const used = new Set();
+let current = null;
+let score = 0;
+const MAX_SCORE = 5500;
+
+function renderBoard(){
+  board.innerHTML='';
+  Object.entries(gameData).forEach(([category, items])=>{
+    const heading=document.createElement('div');
+    heading.className='category'; heading.textContent=category; board.appendChild(heading);
+  });
+  for(let row=0;row<10;row++){
+    Object.entries(gameData).forEach(([category, items])=>{
+      const item=items[row];
+      const key=category+'-'+item.points;
+      const tile=document.createElement('button');
+      tile.className='tile'+(used.has(key)?' used':'');
+      tile.textContent=item.points;
+      tile.setAttribute('aria-label',category+', '+item.points+' points');
+      tile.addEventListener('click',()=>openQuestion(category,item,key));
+      board.appendChild(tile);
+    });
+  }
+}
+function openQuestion(category,item,key){
+  current={category,item,key};
+  document.getElementById('categoryLabel').textContent=category;
+  document.getElementById('pointsLabel').textContent=item.points+' POINTS';
+  document.getElementById('questionText').textContent=item.question;
+  const opts=document.getElementById('options'); opts.innerHTML='';
+  item.options.forEach((option,i)=>{
+    const el=document.createElement('div'); el.className='option';
+    el.textContent=String.fromCharCode(65+i)+'. '+option; opts.appendChild(el);
+  });
+  document.getElementById('answer').classList.remove('show');
+  document.getElementById('answer').textContent='';
+  document.getElementById('revealButton').style.display='inline-block';
+  document.getElementById('backButton').style.display='inline-block';
+  document.getElementById('resultActions').classList.remove('show');
+  document.getElementById('backdrop').classList.add('open');
+}
+function revealAnswer(){
+  if(!current)return;
+  const a=document.getElementById('answer');
+  a.textContent='Correct answer: '+current.item.answer;
+  a.classList.add('show');
+  document.getElementById('revealButton').style.display='none';
+  document.getElementById('backButton').style.display='none';
+  if(!used.has(current.key)) document.getElementById('resultActions').classList.add('show');
+}
+function finishQuestion(correct){
+  if(!current)return;
+  if(!used.has(current.key)){
+    if(correct){
+      score += current.item.points;
+      document.getElementById('scoreValue').textContent=score.toLocaleString()+'';
+    }
+    used.add(current.key);
+  }
+  closeModal();
+}
+function closeModal(){
+  document.getElementById('backdrop').classList.remove('open');
+  if(current && used.has(current.key)) renderBoard();
+  current=null;
+}
+function resetScore(){
+  score=0;
+  document.getElementById('scoreValue').textContent='0';
+}
+document.getElementById('backdrop').addEventListener('click',e=>{
+  if(e.target.id==='backdrop') closeModal();
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+renderBoard();
+</script>
+</body>
+</html>
