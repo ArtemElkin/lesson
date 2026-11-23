@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Who Am I? Celebrity Wheel</title>
+<style>
+:root{--ink:#263238;--muted:#66747b;--paper:#fffdf9;--line:#e9e2d8}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:24px 14px;display:grid;place-items:center;background:linear-gradient(135deg,#e8f4f2,#f8eee7);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink)}
+.app{width:min(100%,720px);background:var(--paper);border-radius:26px;padding:clamp(18px,4vw,36px);box-shadow:0 18px 60px #30424420;text-align:center}
+.tag{display:inline-block;padding:7px 12px;border-radius:99px;background:#e5f3ee;color:#347765;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+h1{font-size:clamp(32px,6vw,46px);margin:12px 0 4px;letter-spacing:-.04em}.intro{color:var(--muted);margin:0 auto 20px;max-width:480px;line-height:1.5}
+.wheel{width:min(100%,390px);margin:0 auto 18px;position:relative}.wheel canvas{width:100%;height:auto;display:block;filter:drop-shadow(0 8px 12px #28323822)}
+.pointer{position:absolute;top:-4px;left:50%;transform:translateX(-50%);z-index:2;width:0;height:0;border-left:17px solid transparent;border-right:17px solid transparent;border-top:30px solid #263238}
+.controls{max-width:510px;margin:auto;text-align:left}label{display:block;font-size:13px;font-weight:800;margin:0 0 7px}select{width:100%;padding:13px;border:1px solid var(--line);border-radius:12px;background:white;font:inherit;color:var(--ink)}
+button{font:inherit;cursor:pointer}.spin{width:100%;margin-top:14px;padding:16px;border:0;border-radius:14px;background:#263f48;color:white;font-weight:850;font-size:17px;box-shadow:0 5px #172b32}.spin:active{transform:translateY(3px);box-shadow:0 2px #172b32}.spin:disabled{opacity:.6;cursor:wait}
+.result{max-width:510px;min-height:112px;margin:20px auto 0;padding:18px;border-radius:17px;background:#fff4df;border:1px solid #f1dfbd;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:7px}
+.result small{font-size:11px;font-weight:800;letter-spacing:.12em;color:#8a7554}.result strong{font-size:clamp(24px,5vw,34px);line-height:1.15}.result span{font-size:13px;color:var(--muted)}
+.meta{max-width:510px;margin:13px auto 0;display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--muted);font-size:12px}.reset{padding:9px 13px;border:1px solid var(--line);border-radius:11px;background:white;font-size:13px;font-weight:750;color:var(--ink)}
+.rules{max-width:510px;margin:24px auto 0;padding:16px 18px;border-radius:15px;background:#f3f7f6;text-align:left;line-height:1.55}.rules h2{font-size:16px;margin:0 0 7px}.rules ol{margin:0;padding-left:21px;color:#526168;font-size:14px}.rules p{margin:9px 0 0;color:#526168;font-size:13px}
+@media(max-width:480px){body{padding:10px}.app{border-radius:20px;padding:18px 13px}.meta{font-size:11px}}
+</style>
+</head>
+<body>
+<main class="app">
+<div class="tag">B1 speaking game</div><h1>WHO AM I?</h1>
+<p class="intro">Spin the celebrity wheel, keep your identity secret and let your partner guess!</p>
+<div class="wheel"><div class="pointer"></div><canvas id="wheel" width="700" height="700" aria-label="Celebrity wheel"></canvas></div>
+<section class="controls">
+<label for="category">CHOOSE A CATEGORY</label>
+<select id="category"><option>All</option><option>Music</option><option>Film & TV</option><option>Sport</option><option>Internet</option></select>
+<button class="spin" id="spin">🎡 SPIN THE WHEEL</button>
+</section>
+<section class="result" aria-live="polite"><small>YOUR CELEBRITY IS...</small><strong id="name">Ready to play?</strong><span id="cat">Your celebrity will appear here.</span></section>
+<div class="meta"><span id="remaining"></span><button class="reset" id="reset">↻ Reset used names</button></div>
+<section class="rules"><h2>How to play</h2><ol><li>One student spins the wheel and secretly looks at the celebrity.</li><li>The other student asks YES/NO questions to guess the identity.</li><li>You have a maximum of 10 questions.</li></ol><p><b>Challenge:</b> Use at least five different tenses while asking questions.</p></section>
+</main>
+<script>
+const people=[
+["Taylor Swift","Music"],["Cristiano Ronaldo","Sport"],["Lionel Messi","Sport"],["MrBeast","Internet"],["Zendaya","Film & TV"],["Selena Gomez","Music"],["Justin Bieber","Music"],["Ariana Grande","Music"],["Rihanna","Music"],["Beyoncé","Music"],["Shakira","Music"],["Billie Eilish","Music"],["Dua Lipa","Music"],["Bad Bunny","Music"],["Drake","Music"],["Kim Kardashian","Internet"],["Kylie Jenner","Internet"],["Khaby Lame","Internet"],["Charli D'Amelio","Internet"],["IShowSpeed","Internet"],["Dwayne Johnson","Film & TV"],["Tom Holland","Film & TV"],["Jenna Ortega","Film & TV"],["Pedro Pascal","Film & TV"],["Timothée Chalamet","Film & TV"],["Ryan Reynolds","Film & TV"],["Margot Robbie","Film & TV"],["LeBron James","Sport"],["Kylian Mbappé","Sport"],["Simone Biles","Sport"],["Virat Kohli","Sport"],["Lewis Hamilton","Sport"],["David Beckham","Sport"],["Gordon Ramsay","Film & TV"],["Millie Bobby Brown","Film & TV"],["Lady Gaga","Music"]
+];
+const colors=["#e87979","#e9ad4c","#70b6a7","#779bd0","#a98bc9","#e58c67","#83b9c4","#d4a5b5"];
+const canvas=document.getElementById("wheel"),ctx=canvas.getContext("2d"),category=document.getElementById("category");
+let pool=[],used=new Set(),rotation=0,busy=false,chosen=null;
+function draw(){
+ const n=pool.length||1,cx=350,cy=350,r=325,s=2*Math.PI/n;ctx.clearRect(0,0,700,700);
+ pool.forEach((p,i)=>{let a=rotation+i*s-Math.PI/2,b=a+s;ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,a,b);ctx.closePath();ctx.fillStyle=colors[i%colors.length];ctx.fill();ctx.strokeStyle="#fffdf9";ctx.lineWidth=5;ctx.stroke();ctx.save();ctx.translate(cx,cy);ctx.rotate(a+s/2);ctx.textAlign="right";ctx.textBaseline="middle";ctx.fillStyle="#263238";ctx.font=`700 ${n>24?17:n>14?19:22}px system-ui`;let t=p[0];if(t.length>17)t=t.slice(0,15)+"…";ctx.fillText(t,r-20,0);ctx.restore();});
+ ctx.beginPath();ctx.arc(cx,cy,42,0,Math.PI*2);ctx.fillStyle="#fffdf9";ctx.fill();ctx.lineWidth=5;ctx.strokeStyle="#263238";ctx.stroke();ctx.font="30px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("🎭",cx,350);
+}
+function refresh(){document.getElementById("remaining").textContent=`${pool.filter(p=>!used.has(p[0])).length} of ${pool.length} names available`;}
+function setPool(){pool=people.filter(p=>category.value==="All"||p[1]===category.value);used.clear();chosen=null;document.getElementById("name").textContent="Ready to play?";document.getElementById("cat").textContent="Your celebrity will appear here.";draw();refresh();}
+function spin(){
+ if(busy)return;let available=pool.filter(p=>!used.has(p[0]));if(!available.length){used.clear();available=pool.slice();}
+ chosen=available[Math.floor(Math.random()*available.length)];used.add(chosen[0]);
+ const idx=pool.indexOf(chosen),slice=2*Math.PI/pool.length,target=-(idx+.5)*slice;
+ let delta=((target-rotation)%(2*Math.PI)+2*Math.PI)%(2*Math.PI),turns=(5+Math.floor(Math.random()*3))*2*Math.PI;
+ const startRot=rotation,total=delta+turns,duration=4200,start=performance.now();busy=true;document.getElementById("spin").disabled=true;
+ document.getElementById("name").textContent="Spinning…";document.getElementById("cat").textContent="Who will you be?";
+ function frame(now){let t=Math.min(1,(now-start)/duration),ease=1-Math.pow(1-t,4);rotation=startRot+total*ease;draw();if(t<1)requestAnimationFrame(frame);else{rotation=target;draw();document.getElementById("name").textContent=chosen[0];document.getElementById("cat").textContent=chosen[1];busy=false;document.getElementById("spin").disabled=false;refresh();}}
+ requestAnimationFrame(frame);
+}
+document.getElementById("spin").addEventListener("click",spin);category.addEventListener("change",setPool);
+document.getElementById("reset").addEventListener("click",()=>{used.clear();chosen=null;document.getElementById("name").textContent="Ready to play?";document.getElementById("cat").textContent="Your celebrity will appear here.";refresh();draw();});
+setPool();
+</script>
+</body></html>
